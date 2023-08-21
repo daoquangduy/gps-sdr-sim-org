@@ -7,7 +7,7 @@
 //	MessageBox(0,"Hello World from DLL!\n","Hi",MB_ICONINFORMATION);
 //}
 
-DLLIMPORT int create_bin(char* param);
+DLLIMPORT int create_bin(char* param, char* base_path);
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved)
 {

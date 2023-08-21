@@ -1714,7 +1714,7 @@ void usage(void)
 }
 
 //int main(int argc, char *argv[])
-int create_bin(char* param)
+int create_bin(char* param, char* base_path)
 {
 	clock_t tstart,tend;
 
@@ -1796,7 +1796,7 @@ int create_bin(char* param)
 //	if (argc<3)
 //	{
 //		usage();
-//		exit(1);
+//		return (1);
 //	}
 	
 	int nargc = 1;
@@ -1872,7 +1872,7 @@ int create_bin(char* param)
 			if (samp_freq<1.0e6)
 			{
 				fprintf(stderr, "ERROR: Invalid sampling frequency.\n");
-				exit(1);
+				return (1);
 			}
 			break;
 		case 'b':
@@ -1880,7 +1880,7 @@ int create_bin(char* param)
 			if (data_format!=SC01 && data_format!=SC08 && data_format!=SC16)
 			{
 				fprintf(stderr, "ERROR: Invalid I/Q data format.\n");
-				exit(1);
+				return (1);
 			}
 			break;
 		case 'T':
@@ -1910,7 +1910,7 @@ int create_bin(char* param)
 				t0.hh<0 || t0.hh>23 || t0.mm<0 || t0.mm>59 || t0.sec<0.0 || t0.sec>=60.0)
 			{
 				fprintf(stderr, "ERROR: Invalid date and time.\n");
-				exit(1);
+				return (1);
 			}
 			t0.sec = floor(t0.sec);
 			date2gps(&t0, &g0);
@@ -1926,8 +1926,8 @@ int create_bin(char* param)
 			break;
 		case ':':
 		case '?':
-			usage();
-			exit(1);
+			//usage();
+			return (1);
 		default:
 			break;
 		}
@@ -1936,7 +1936,7 @@ int create_bin(char* param)
 	if (navfile[0]==0)
 	{
 		fprintf(stderr, "ERROR: GPS ephemeris file is not specified.\n");
-		exit(1);
+		return (1);
 	}
 
 	if (umfile[0]==0 && !staticLocationMode)
@@ -1951,7 +1951,7 @@ int create_bin(char* param)
 	if (duration<0.0 || (duration>((double)USER_MOTION_SIZE)/10.0 && !staticLocationMode) || (duration>STATIC_MAX_DURATION && staticLocationMode))
 	{
 		fprintf(stderr, "ERROR: Invalid duration.\n");
-		exit(1);
+		return (1);
 	}
 	iduration = (int)(duration*10.0 + 0.5);
 
@@ -1966,25 +1966,31 @@ int create_bin(char* param)
 	// Receiver position
 	////////////////////////////////////////////////////////////
 
+	char temp_path[255];
+
 	if (!staticLocationMode)
 	{
+		sprintf(temp_path, "%s\\%s", base_path, umfile);
 		// Read user motion file
 		if (nmeaGGA==TRUE)
-			numd = readNmeaGGA(xyz, umfile);
+			//numd = readNmeaGGA(xyz, umfile);
+			numd = readNmeaGGA(xyz, temp_path);
 		else if (umLLH == TRUE)
-			numd = readUserMotionLLH(xyz, umfile);
+			//numd = readUserMotionLLH(xyz, umfile);
+			numd = readUserMotionLLH(xyz, temp_path);
 		else
-			numd = readUserMotion(xyz, umfile);
+			//numd = readUserMotion(xyz, umfile);
+			numd = readUserMotion(xyz, temp_path);
 
 		if (numd==-1)
 		{
 			fprintf(stderr, "ERROR: Failed to open user motion / NMEA GGA file.\n");
-			exit(1);
+			return (1);
 		}
 		else if (numd==0)
 		{
 			fprintf(stderr, "ERROR: Failed to read user motion / NMEA GGA data.\n");
-			exit(1);
+			return (1);
 		}
 
 		// Set simulation duration
@@ -2013,18 +2019,22 @@ int create_bin(char* param)
 	////////////////////////////////////////////////////////////
 	// Read ephemeris
 	////////////////////////////////////////////////////////////
+	
 
-	neph = readRinexNavAll(eph, &ionoutc, navfile);
+	sprintf(temp_path, "%s\\%s", base_path, navfile);
+
+	//neph = readRinexNavAll(eph, &ionoutc, navfile);
+	neph = readRinexNavAll(eph, &ionoutc, temp_path);
 
 	if (neph==0)
 	{
 		fprintf(stderr, "ERROR: No ephemeris available.\n");
-		exit(1);
+		return (1);
 	}
 	else if (neph==-1)
 	{
 		fprintf(stderr, "ERROR: ephemeris file not found.\n");
-		exit(1);
+		return (1);
 	}
 
 	if ((verb==TRUE)&&(ionoutc.vflg==TRUE))
@@ -2115,7 +2125,7 @@ int create_bin(char* param)
 				fprintf(stderr, "tmax = %4d/%02d/%02d,%02d:%02d:%02.0f (%d:%.0f)\n", 
 					tmax.y, tmax.m, tmax.d, tmax.hh, tmax.mm, tmax.sec,
 					gmax.week, gmax.sec);
-				exit(1);
+				return (1);
 			}
 		}
 	}
@@ -2154,7 +2164,7 @@ int create_bin(char* param)
 	if (ieph == -1)
 	{
 		fprintf(stderr, "ERROR: No current set of ephemerides has been found.\n");
-		exit(1);
+		return (1);
 	}
 
 	////////////////////////////////////////////////////////////
@@ -2167,7 +2177,7 @@ int create_bin(char* param)
 	if (iq_buff==NULL)
 	{
 		fprintf(stderr, "ERROR: Failed to allocate 16-bit I/Q buffer.\n");
-		exit(1);
+		return (1);
 	}
 
 	if (data_format==SC08)
@@ -2176,7 +2186,7 @@ int create_bin(char* param)
 		if (iq8_buff==NULL)
 		{
 			fprintf(stderr, "ERROR: Failed to allocate 8-bit I/Q buffer.\n");
-			exit(1);
+			return (1);
 		}
 	}
 	else if (data_format==SC01)
@@ -2185,17 +2195,19 @@ int create_bin(char* param)
 		if (iq8_buff==NULL)
 		{
 			fprintf(stderr, "ERROR: Failed to allocate compressed 1-bit I/Q buffer.\n");
-			exit(1);
+			return (1);
 		}
 	}
 
 	// Open output file
 	// "-" can be used as name for stdout
 	if(strcmp("-", outfile)){
-		if (NULL==(fp=fopen(outfile,"wb")))
+		sprintf(temp_path, "%s\\%s", base_path, outfile);
+		//if (NULL==(fp=fopen(outfile,"wb")))
+		if (NULL == (fp = fopen(temp_path, "wb")))
 		{
 			fprintf(stderr, "ERROR: Failed to open output file.\n");
-			exit(1);
+			return (1);
 		}
 	}else{
 		fp = stdout;
